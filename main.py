@@ -96,6 +96,7 @@ async def retrieve_images():
                         "width": width,
                         "height": height,
                         "format": format,
+                        "caption": caption,
                         "size_bytes": size
                     },
                     "thumbnails": {
@@ -120,10 +121,13 @@ async def retrieve_images():
         data.append(entry)
     return data
 
+
 @app.get("/api/images/{id}")
 async def retrieve_images(id):
     cursor.execute("SELECT * FROM images WHERE id = ?", (id,))
     file = cursor.fetchone()
+    if file is None:
+        raise HTTPException(status_code=400, detail="File not found")
     data = {}
     id, filename, processed_at, width, height, format, size, caption, status, error = file
     if status == "success":
@@ -133,6 +137,7 @@ async def retrieve_images(id):
                 "image_id": id,
                 "original_name": filename,
                 "processed_at": processed_at,
+                "caption": caption,
                 "metadata": {
                     "width": width,
                     "height": height,
@@ -160,6 +165,7 @@ async def retrieve_images(id):
         }
     return data
 
+
 @app.get("/api/images/{id}/thumbnails/{size}")
 async def retrieve_thumbnail(id, size):
     cursor.execute("SELECT * FROM images WHERE id = ?", (id,))
@@ -167,7 +173,7 @@ async def retrieve_thumbnail(id, size):
     if row is None:
         raise HTTPException(status_code=400, detail="File not found")
     filename = row[1]
-    if size.lower() not in ["small", "medium"]: 
+    if size.lower() not in ["small", "medium"]:
         raise HTTPException(status_code=400, detail="Invalid size")
     file_path = f"/images/{filename}/thumb_{size.lower()}"
     return FileResponse(path=file_path, filename=file_path, media_type='image/png')

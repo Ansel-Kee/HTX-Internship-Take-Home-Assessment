@@ -19,17 +19,16 @@ cursor.execute("SELECT * FROM stats")
 total, failed, totalTime = cursor.fetchone()
 
 
-def generate_thumbnail(image, curr, filename, extension):
+def generate_thumbnail(image, filename):
     SMALL_SIZE = (75, 75)
     MEDIUM_SIZE = (100, 100)
-    path = f"\images\\{filename}\\"
+    path = os.getcwd() + f"\images\\{filename}\\"
 
     image.thumbnail(SMALL_SIZE)
     image.save(path + 'thumb_small.png')
     image.thumbnail(MEDIUM_SIZE)
     image.save(path + 'thumb_medium.png')
     return
-
 
 def insert_db(filename, processed_at, width, height, format, size):
     cursor.execute(
@@ -69,7 +68,7 @@ async def receive_image(file: UploadFile = File(...)):
     filetype = file.content_type
     image.save(f'\images\\{filename}\\{file.filename}')
     size = os.path.getsize(f'\images\\{filename}\\{file.filename}')
-    generate_thumbnail(image, filename, extension)
+    generate_thumbnail(image, filename)
     rowid = insert_db(file.filename, curr, width, height, format, size)
 
     t = Thread(target=process_image, args=(image, rowid, time.time()))
@@ -78,70 +77,20 @@ async def receive_image(file: UploadFile = File(...)):
     return image
 
 
-@app.get("/api/images")
-async def retrieve_images():
-    cursor.execute("SELECT * FROM images")
-    files = cursor.fetchall()
-    data = []
-    for file in files:
-        id, filename, processed_at, width, height, format, size, caption, status, error = file
-        if status == "success":
-            entry = {
-                "status": status,
-                "data": {
-                    "image_id": id,
-                    "original_name": filename,
-                    "processed_at": processed_at,
-                    "metadata": {
-                        "width": width,
-                        "height": height,
-                        "format": format,
-                        "caption": caption,
-                        "size_bytes": size
-                    },
-                    "thumbnails": {
-                        "small": f"http://localhost:8000/api/images/{filename}/thumbnails/small",
-                        "medium": f"http://localhost:8000/api/images/{filename}/thumbnails/medium"
-                    }
-                },
-                "error": "null"
-            }
-        else:
-            entry = {
-                "status": "failed",
-                "data": {
-                    "image_id": id,
-                    "original_name": filename,
-                    "processed_at": processed_at,
-                    "metadata": {},
-                    "thumbnails": {}
-                },
-                "error": "invalid file format"
-            }
-        data.append(entry)
-    return data
-
-
-@app.get("/api/images/{id}")
-async def retrieve_images(id):
-    cursor.execute("SELECT * FROM images WHERE id = ?", (id,))
-    file = cursor.fetchone()
-    if file is None:
-        raise HTTPException(status_code=400, detail="File not found")
-    data = {}
+def process_file(file):
     id, filename, processed_at, width, height, format, size, caption, status, error = file
     if status == "success":
-        data = {
+        entry = {
             "status": status,
             "data": {
                 "image_id": id,
                 "original_name": filename,
                 "processed_at": processed_at,
-                "caption": caption,
                 "metadata": {
                     "width": width,
                     "height": height,
                     "format": format,
+                    "caption": caption,
                     "size_bytes": size
                 },
                 "thumbnails": {
@@ -152,7 +101,7 @@ async def retrieve_images(id):
             "error": "null"
         }
     else:
-        data = {
+        entry = {
             "status": "failed",
             "data": {
                 "image_id": id,
@@ -163,6 +112,27 @@ async def retrieve_images(id):
             },
             "error": "invalid file format"
         }
+    return entry
+
+@app.get("/api/images")
+async def retrieve_images():
+    cursor.execute("SELECT * FROM images")
+    files = cursor.fetchall()
+    data = []
+    for file in files:
+        
+        entry = process_file(file)
+        data.append(entry)
+    return data
+
+
+@app.get("/api/images/{id}")
+async def retrieve_images(id):
+    cursor.execute("SELECT * FROM images WHERE id = ?", (id,))
+    file = cursor.fetchone()
+    if file is None:
+        raise HTTPException(status_code=400, detail="File not found")
+    data = process_file(file)
     return data
 
 

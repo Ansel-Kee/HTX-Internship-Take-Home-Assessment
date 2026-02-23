@@ -6,4 +6,3 @@ fastapi[standard]
 pytest
 python-multipart
 httpx
-sqlmodel

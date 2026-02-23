@@ -1,11 +1,20 @@
-To run tests, run
+# SETUP
 ```
-pytest test.py 
+pip install -r requirements.txt
 ```
-in the current directory
+
+# USAGE
 
 To launch the server, run
 ```
 fastapi dev main.py
 ```
 API documentation can be found at http://127.0.0.1:8000/docs
+
+# TESTS
+
+To run tests, run
+```
+pytest test.py 
+```
+in the current directory

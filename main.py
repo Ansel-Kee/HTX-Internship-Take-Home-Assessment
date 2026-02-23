@@ -132,7 +132,7 @@ async def retrieve_images():
     return data
 
 @app.get("/api/images/{id}")
-async def retrieve_images(id):
+async def retrieve_image(id):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM images WHERE id = ?", (id,))
